@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maxime's Times Table Adventure</title>
+<style>
+  :root {
+    --sky: #bfe9ff;
+    --sky-2: #e8f7ff;
+    --grass: #7bd88f;
+    --ink: #2b2d42;
+    --card: #ffffff;
+    --accent: #ff7a59;
+    --accent-dark: #e0593a;
+    --good: #2fbf71;
+    --gold: #ffc93c;
+    --purple: #7b61ff;
+    --shadow: 0 6px 0 rgba(43, 45, 66, .15);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Baloo 2", "Nunito", "Trebuchet MS", "Comic Sans MS", system-ui, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(var(--sky), var(--sky-2) 60%, var(--grass) 60.1%);
+    background-attachment: fixed;
+    overflow-x: hidden;
+    user-select: none;
+  }
+  #app { max-width: 760px; margin: 0 auto; min-height: 100%; padding: 12px 16px 24px; display: flex; flex-direction: column; }
+
+  /* top bar */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 56px; }
+  .pill { background: var(--card); border-radius: 999px; padding: 8px 16px; font-size: 22px; font-weight: 800; box-shadow: var(--shadow); display: inline-flex; gap: 8px; align-items: center; }
+  .icon-btn { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--card); box-shadow: var(--shadow); font-size: 28px; cursor: pointer; }
+  .icon-btn.off { opacity: .45; }
+  .icon-btn:active { transform: translateY(3px); box-shadow: none; }
+
+  .screen { display: none; flex: 1; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 16px; }
+  .screen.active { display: flex; animation: pop .35s ease-out; }
+  @keyframes pop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+
+  h1 { font-size: clamp(34px, 8vw, 56px); margin: 0; line-height: 1.05; text-shadow: 0 3px 0 #fff; }
+  h2 { font-size: clamp(28px, 6vw, 40px); margin: 0; }
+  p.sub { font-size: 22px; margin: 0; font-weight: 700; }
+
+  /* buttons */
+  .btn {
+    font: inherit; font-size: 28px; font-weight: 800; color: #fff; background: var(--accent);
+    border: 0; border-radius: 28px; padding: 16px 40px; min-height: 72px; min-width: 200px; cursor: pointer;
+    box-shadow: 0 8px 0 var(--accent-dark); transition: transform .08s, box-shadow .08s;
+  }
+  .btn:active { transform: translateY(6px); box-shadow: 0 2px 0 var(--accent-dark); }
+  .btn.green { background: var(--good); box-shadow: 0 8px 0 #1f9657; }
+  .btn.green:active { box-shadow: 0 2px 0 #1f9657; }
+  .btn.ghost { background: var(--card); color: var(--ink); box-shadow: 0 8px 0 rgba(43,45,66,.18); }
+  .btn.ghost:active { box-shadow: 0 2px 0 rgba(43,45,66,.18); }
+
+  /* mascot */
+  .mascot { font-size: 120px; line-height: 1; display: inline-block; filter: drop-shadow(0 8px 0 rgba(43,45,66,.12)); animation: bob 2.2s ease-in-out infinite; }
+  .mascot.small { font-size: 72px; }
+  .mascot.cheer { animation: cheer .7s ease-in-out; }
+  .mascot.oops { animation: wobble .6s ease-in-out; }
+  @keyframes bob { 50% { transform: translateY(-10px) rotate(-3deg); } }
+  @keyframes cheer { 0%,100% { transform: none; } 30% { transform: translateY(-34px) scale(1.15) rotate(-8deg); } 60% { transform: translateY(-10px) rotate(8deg); } }
+  @keyframes wobble { 25% { transform: rotate(-9deg); } 75% { transform: rotate(9deg); } }
+  .bubble { background: var(--card); border-radius: 24px; padding: 12px 22px; font-size: 24px; font-weight: 800; box-shadow: var(--shadow); min-height: 54px; max-width: 92%; }
+
+  /* map */
+  .worlds { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; width: 100%; }
+  .world { background: var(--card); border: 0; border-radius: 28px; padding: 18px 12px; box-shadow: var(--shadow); font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 170px; justify-content: center; }
+  .world:active { transform: translateY(4px); }
+  .world .emoji { font-size: 56px; }
+  .world .name { font-size: 28px; font-weight: 800; }
+  .world .stars { font-size: 28px; letter-spacing: 2px; }
+  .world.locked { opacity: .55; cursor: default; background: #eef1f5; }
+  .world.locked:active { transform: none; }
+
+  /* learn */
+  .count-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 100%; }
+  .count-chip { width: 72px; height: 72px; border-radius: 22px; background: var(--card); box-shadow: var(--shadow); font-size: 32px; font-weight: 800; display: grid; place-items: center; opacity: .25; transform: scale(.85); transition: all .25s; }
+  .count-chip.on { opacity: 1; transform: scale(1); background: var(--gold); }
+
+  /* question */
+  .progress { width: 100%; height: 18px; border-radius: 99px; background: rgba(255,255,255,.7); overflow: hidden; box-shadow: inset 0 2px 0 rgba(43,45,66,.12); }
+  .progress > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), var(--accent)); border-radius: 99px; transition: width .4s; }
+  .question { font-size: clamp(54px, 14vw, 96px); font-weight: 900; line-height: 1; text-shadow: 0 4px 0 #fff; }
+  .question .q { color: var(--purple); }
+  .groups { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; background: rgba(255,255,255,.75); border-radius: 24px; padding: 14px; width: 100%; min-height: 96px; }
+  .group { display: flex; gap: 2px; padding: 6px 10px; border-radius: 18px; background: #fff7d6; border: 3px dashed #ffd54a; font-size: 30px; }
+  .group.glow { background: #d9ffe8; border-color: var(--good); }
+  .answers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: 100%; }
+  .answer { font: inherit; font-size: clamp(42px, 11vw, 64px); font-weight: 900; color: #fff; background: var(--purple); border: 0; border-radius: 28px; min-height: 104px; cursor: pointer; box-shadow: 0 8px 0 #5b43d6; }
+  .answer:active { transform: translateY(6px); box-shadow: 0 2px 0 #5b43d6; }
+  .answer.correct { background: var(--good); box-shadow: 0 8px 0 #1f9657; animation: cheer .6s; }
+  .answer.try { background: #b9b2e8; box-shadow: 0 8px 0 #9a92d0; animation: wobble .5s; pointer-events: none; }
+  .answers.locked .answer { pointer-events: none; }
+  .feedback { font-size: 26px; font-weight: 800; min-height: 70px; display: flex; align-items: center; justify-content: center; }
+
+  /* results */
+  .big-stars { font-size: 84px; letter-spacing: 6px; }
+  .big-stars span { display: inline-block; opacity: .25; filter: grayscale(1); transform: scale(.6); }
+  .big-stars span.on { opacity: 1; filter: none; animation: starIn .5s ease-out both; }
+  @keyframes starIn { from { transform: scale(0) rotate(-120deg); } to { transform: scale(1); } }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+
+  /* confetti */
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+<div id="app">
+
+  <div class="topbar">
+    <div class="pill" title="Coins">🪙 <span id="coins">0</span></div>
+    <div style="display:flex; gap:10px">
+      <button class="icon-btn" id="btn-voice" aria-label="Read aloud on or off">🗣️</button>
+      <button class="icon-btn" id="btn-sound" aria-label="Sound on or off">🔊</button>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <section class="screen active" id="s-home">
+    <div class="mascot" id="home-mascot">🐲</div>
+    <h1>Maxime's<br>Times Table<br>Adventure!</h1>
+    <p class="sub">Hi Maxime! I'm Zippy. Let's play!</p>
+    <button class="btn" id="btn-play">▶ Play</button>
+  </section>
+
+  <!-- MAP -->
+  <section class="screen" id="s-map">
+    <h2>Pick a world</h2>
+    <div class="worlds" id="worlds"></div>
+    <button class="btn ghost" data-go="home" style="min-width:0; font-size:22px; min-height:56px; padding:10px 28px">⬅ Home</button>
+  </section>
+
+  <!-- LEARN -->
+  <section class="screen" id="s-learn">
+    <div class="mascot small" id="learn-mascot">🐲</div>
+    <h2>Counting by 2s</h2>
+    <div class="bubble" id="learn-text">Tap the button and count with me!</div>
+    <div class="count-row" id="count-row"></div>
+    <div class="row">
+      <button class="btn green" id="btn-next-count">Next number ➜</button>
+    </div>
+    <button class="btn ghost" id="btn-learn-done" style="display:none">🎮 Let's play!</button>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="s-play" style="justify-content:flex-start">
+    <div class="progress"><i id="bar"></i></div>
+    <div class="question" id="question"></div>
+    <div class="groups" id="groups"></div>
+    <div class="feedback" id="feedback"><span class="mascot small" id="play-mascot" style="font-size:54px">🐲</span><span id="feedback-text"></span></div>
+    <div class="answers" id="answers"></div>
+    <button class="btn ghost" id="btn-hear" style="min-width:0; font-size:20px; min-height:52px; padding:8px 24px">🔈 Say it again</button>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="screen" id="s-results">
+    <div class="mascot" id="result-mascot">🐲</div>
+    <div class="big-stars" id="big-stars"></div>
+    <h2 id="result-title">Great job!</h2>
+    <p class="sub" id="result-detail"></p>
+    <div class="row">
+      <button class="btn green" id="btn-again">↻ Play again</button>
+      <button class="btn ghost" data-go="map">🗺️ Map</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- Storage (safe wrappers) ----------
+  const KEY = 'maxime-times-tables-v1';
+  const defaults = { coins: 0, sound: true, voice: true, worlds: { 2: { stars: 0, played: 0 } }, facts: {} };
+  const load = () => { try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) { return { ...defaults }; } };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+  const state = load();
+
+  // ---------- Helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // ---------- Sound (Web Audio, no files) ----------
+  let ac;
+  const tone = (freq, dur = .15, type = 'sine', when = 0, vol = .18) => {
+    if (!state.sound) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  };
+  const sfx = {
+    tap:   () => tone(520, .08, 'triangle'),
+    good:  () => { tone(660, .12, 'triangle'); tone(880, .12, 'triangle', .1); tone(1175, .2, 'triangle', .2); },
+    oops:  () => { tone(330, .18, 'sine'); tone(262, .25, 'sine', .15); },
+    win:   () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .22, 'triangle', i * .12)),
+    count: (n) => tone(300 + n * 40, .18, 'triangle'),
+  };
+
+  // ---------- Read aloud ----------
+  const say = (text) => {
+    if (!state.voice || !('speechSynthesis' in window)) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = .9; u.pitch = 1.2;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  };
+
+  // ---------- Screens ----------
+  const show = (name) => {
+    document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 's-' + name));
+    if (name === 'map') renderMap();
+    window.scrollTo(0, 0);
+  };
+  document.addEventListener('click', (e) => {
+    const go = e.target.closest('[data-go]');
+    if (go) { sfx.tap(); show(go.dataset.go); }
+  });
+
+  const refreshHud = () => {
+    $('coins').textContent = state.coins;
+    $('btn-sound').textContent = state.sound ? '🔊' : '🔇';
+    $('btn-sound').classList.toggle('off', !state.sound);
+    $('btn-voice').classList.toggle('off', !state.voice);
+  };
+  $('btn-sound').onclick = () => { state.sound = !state.sound; save(); refreshHud(); sfx.tap(); };
+  $('btn-voice').onclick = () => { state.voice = !state.voice; save(); refreshHud(); if (!state.voice) speechSynthesis.cancel(); else say('Hello Maxime!'); };
+
+  // ---------- Mascot ----------
+  const react = (el, cls) => { el.classList.remove('cheer', 'oops'); void el.offsetWidth; el.classList.add(cls); };
+
+  // ---------- Map ----------
+  const WORLDS = [
+    { n: 2, emoji: '🌳', name: 'The 2s Forest', open: true },
+    { n: 10, emoji: '🌊', name: 'The 10s Ocean', open: false },
+    { n: 5, emoji: '🚀', name: 'The 5s Space', open: false },
+  ];
+  const renderMap = () => {
+    const box = $('worlds'); box.innerHTML = '';
+    WORLDS.forEach((w) => {
+      const b = document.createElement('button');
+      b.className = 'world' + (w.open ? '' : ' locked');
+      const stars = state.worlds[w.n] ? state.worlds[w.n].stars : 0;
+      b.innerHTML = `<span class="emoji">${w.open ? w.emoji : '🔒'}</span><span class="name">${w.name}</span>` +
+        (w.open ? `<span class="stars">${'⭐'.repeat(stars)}${'☆'.repeat(3 - stars)}</span>` : `<span style="font-size:20px;font-weight:700">Coming soon</span>`);
+      if (w.open) b.onclick = () => { sfx.tap(); startWorld(w.n); };
+      box.appendChild(b);
+    });
+  };
+
+  // ---------- World entry: Learn first time, then straight to play ----------
+  let table = 2;
+  const startWorld = (n) => {
+    table = n;
+    if (state.worlds[n].played === 0) startLearn(); else startRound();
+  };
+
+  // ---------- Learn it: skip counting ----------
+  let counted = 0;
+  const startLearn = () => {
+    counted = 0;
+    const row = $('count-row'); row.innerHTML = '';
+    for (let i = 1; i <= 10; i++) { const c = document.createElement('div'); c.className = 'count-chip'; c.textContent = i * table; c.id = 'chip' + i; row.appendChild(c); }
+    $('learn-text').textContent = 'Tap the button and count with me!';
+    $('btn-next-count').style.display = ''; $('btn-learn-done').style.display = 'none';
+    show('learn'); say('Let us count by twos!');
+  };
+  $('btn-next-count').onclick = () => {
+    counted++;
+    $('chip' + counted).classList.add('on');
+    sfx.count(counted);
+    const v = counted * table;
+    $('learn-text').textContent = v;
+    say(String(v));
+    react($('learn-mascot'), 'cheer');
+    if (counted === 10) {
+      $('learn-text').textContent = 'You counted to 20! 🎉';
+      $('btn-next-count').style.display = 'none'; $('btn-learn-done').style.display = '';
+      sfx.win(); burst();
+      setTimeout(() => say('You counted to twenty! Great job!'), 700);
+    }
+  };
+  $('btn-learn-done').onclick = () => { sfx.tap(); startRound(); };
+
+  // ---------- Round ----------
+  let queue = [], total = 0, doneCount = 0, firstTry = 0, current = null, attempted = false, busy = false, coinsEarned = 0;
+  const CHEERS = ['Yes! 🎉', 'Great job!', 'Amazing!', 'You got it!', 'Super!', 'Wow, so smart!'];
+  const SOFT = ['Almost! Let\'s count together.', 'Good try! Look at the stars.', 'Nearly! Let\'s check.'];
+
+  const startRound = () => {
+    queue = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).map((a) => ({ a, b: table }));
+    total = queue.length; doneCount = 0; firstTry = 0; coinsEarned = 0;
+    show('play');
+    nextQuestion();
+  };
+
+  const makeChoices = (ans) => {
+    const pool = shuffle([ans - 2, ans + 2, ans - 1, ans + 1, ans + 4].filter((x) => x > 0 && x !== ans));
+    // prefer neighbouring multiples so guessing is not trivial
+    const multiples = pool.filter((x) => x % table === 0);
+    const others = pool.filter((x) => x % table !== 0);
+    const wrong = [...multiples, ...others].slice(0, 2);
+    return shuffle([ans, ...wrong]);
+  };
+
+  const drawGroups = (a, b, glow) => {
+    const g = $('groups'); g.innerHTML = '';
+    for (let i = 0; i < a; i++) {
+      const d = document.createElement('div'); d.className = 'group' + (glow ? ' glow' : '');
+      d.textContent = '⭐'.repeat(b); g.appendChild(d);
+    }
+  };
+
+  const nextQuestion = () => {
+    if (!queue.length) return finishRound();
+    current = queue.shift(); attempted = !!current.retry; busy = false;
+    const { a, b } = current, ans = a * b;
+    $('bar').style.width = (doneCount / total * 100) + '%';
+    $('question').innerHTML = `${a} × ${b} = <span class="q">?</span>`;
+    drawGroups(a, b, false);
+    $('feedback-text').textContent = `${a} groups of ${b}`;
+    const box = $('answers'); box.className = 'answers'; box.innerHTML = '';
+    makeChoices(ans).forEach((v) => {
+      const btn = document.createElement('button');
+      btn.className = 'answer'; btn.textContent = v;
+      btn.onclick = () => choose(btn, v);
+      box.appendChild(btn);
+    });
+    speakQuestion();
+  };
+  const speakQuestion = () => { if (current) say(`${current.a} times ${current.b}?`); };
+  $('btn-hear').onclick = () => { sfx.tap(); if (!state.voice) { state.voice = true; save(); refreshHud(); } speakQuestion(); };
+
+  const choose = async (btn, v) => {
+    if (busy) return;
+    const { a, b } = current, ans = a * b;
+    const fact = state.facts[a + 'x' + b] = state.facts[a + 'x' + b] || { right: 0, wrong: 0 };
+    if (v === ans) {
+      busy = true;
+      btn.classList.add('correct');
+      sfx.good(); burst(btn);
+      if (!attempted) { firstTry++; coinsEarned += 2; state.coins += 2; fact.right++; } else { coinsEarned += 1; state.coins += 1; }
+      doneCount++;
+      drawGroups(a, b, true);
+      $('feedback-text').textContent = `${pick(CHEERS)} ${a} × ${b} = ${ans}`;
+      react($('play-mascot'), 'cheer');
+      say(`${ans}! ${pick(['Great job!', 'Yes!', 'Super!'])}`);
+      refreshHud(); save();
+      await sleep(1500);
+      nextQuestion();
+    } else {
+      // gentle: grey out that option, show the stars, and bring the fact back later
+      btn.classList.add('try');
+      sfx.oops();
+      fact.wrong++;
+      if (!attempted) { attempted = true; total++; queue.splice(Math.min(queue.length, 3 + Math.floor(Math.random() * 3)), 0, { a, b, retry: true }); }
+      $('feedback-text').textContent = pick(SOFT);
+      react($('play-mascot'), 'oops');
+      say('Almost! Let us count the stars.');
+      save();
+      // counting helper: light up groups one by one
+      busy = true;
+      const groups = [...$('groups').children];
+      for (let i = 0; i < groups.length; i++) {
+        groups[i].classList.add('glow'); tone(300 + (i + 1) * 40, .12, 'triangle'); await sleep(260);
+      }
+      await sleep(300);
+      groups.forEach((g) => g.classList.remove('glow'));
+      busy = false;
+    }
+  };
+
+  const finishRound = () => {
+    $('bar').style.width = '100%';
+    const stars = firstTry >= 9 ? 3 : firstTry >= 6 ? 2 : 1;
+    const bonus = stars * 3; state.coins += bonus; coinsEarned += bonus;
+    const w = state.worlds[table]; w.played++; w.stars = Math.max(w.stars, stars);
+    save(); refreshHud();
+    const bs = $('big-stars'); bs.innerHTML = '';
+    for (let i = 0; i < 3; i++) { const s = document.createElement('span'); s.textContent = '⭐'; bs.appendChild(s); }
+    show('results');
+    $('result-title').textContent = stars === 3 ? 'Superstar!' : stars === 2 ? 'Great job!' : 'Good practice!';
+    $('result-detail').textContent = `${firstTry} out of 10 first try · +${coinsEarned} 🪙`;
+    [...bs.children].forEach((s, i) => { if (i < stars) setTimeout(() => { s.classList.add('on'); tone(600 + i * 150, .2, 'triangle'); }, 400 + i * 450); });
+    setTimeout(() => { sfx.win(); burst(); react($('result-mascot'), 'cheer'); }, 400);
+    say(stars === 3 ? 'Wow! Three stars! You are a superstar!' : stars === 2 ? 'Great job Maxime! Two stars!' : 'Good practice Maxime! Let us try again!');
+  };
+  $('btn-again').onclick = () => { sfx.tap(); startRound(); };
+  $('btn-play').onclick = () => { sfx.tap(); say('Pick a world!'); show('map'); };
+
+  // ---------- Confetti ----------
+  const cv = $('confetti'), cx = cv.getContext('2d');
+  let bits = [], raf = 0;
+  const fit = () => { cv.width = innerWidth; cv.height = innerHeight; };
+  addEventListener('resize', fit); fit();
+  const burst = (from) => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const r = from ? from.getBoundingClientRect() : null;
+    const ox = r ? r.left + r.width / 2 : innerWidth / 2, oy = r ? r.top + r.height / 2 : innerHeight / 3;
+    const colors = ['#ff7a59', '#ffc93c', '#2fbf71', '#7b61ff', '#38b6ff', '#ff6fb5'];
+    for (let i = 0; i < 70; i++) bits.push({ x: ox, y: oy, vx: (Math.random() - .5) * 14, vy: Math.random() * -13 - 3, s: 6 + Math.random() * 8, c: pick(colors), r: Math.random() * 6, vr: (Math.random() - .5) * .4, life: 90 });
+    if (!raf) raf = requestAnimationFrame(tick);
+  };
+  const tick = () => {
+    cx.clearRect(0, 0, cv.width, cv.height);
+    bits = bits.filter((p) => p.life > 0);
+    bits.forEach((p) => {
+      p.x += p.vx; p.y += p.vy; p.vy += .5; p.r += p.vr; p.life--;
+      cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r); cx.globalAlpha = Math.min(1, p.life / 30);
+      cx.fillStyle = p.c; cx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * .6); cx.restore();
+    });
+    raf = bits.length ? requestAnimationFrame(tick) : 0;
+    if (!bits.length) cx.clearRect(0, 0, cv.width, cv.height);
+  };
+
+  refreshHud();
+})();
+</script>
+</body>
+</html>
